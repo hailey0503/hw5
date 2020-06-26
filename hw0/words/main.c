@@ -71,7 +71,8 @@ return num_words ;
  * Useful functions: fgetc(), isalpha(), tolower(), add_word().
  */
 void count_words(WordCount **wclist, FILE *infile) {
-	bool is_word = false ;
+	bool is_word = false;
+	bool is_end = false;
 	char prev_ch, ch = '\0';
 
 	char *word = malloc(sizeof(char) * MAX_WORD_LEN);
@@ -80,8 +81,16 @@ void count_words(WordCount **wclist, FILE *infile) {
 	prev_ch = ch;
 	ch = fgetc(infile);
 	ch = tolower(ch);
+	if (prev_ch == '\\' && ch == 'n') {
+                 is_end = true;
+        } else {
+                 is_end = false;
+         }
+
+	if (isalpha(ch) && !is_end) {
 	word[word_len] = ch;
 	word_len++;
+	}
 	if (is_word && !isalpha(ch)) {
 		word[word_len] = '\0';
 
@@ -91,7 +100,9 @@ void count_words(WordCount **wclist, FILE *infile) {
 	       word_len = 0;
 
 	}
-	is_word = isalpha(prev_ch) && isalpha(ch); }  while (ch != EOF);
+	is_word = isalpha(prev_ch) && isalpha(ch);
+   
+	}  while (ch != EOF);
 	
 }
 /*
