@@ -47,7 +47,7 @@ word_count_t *find_word(word_count_list_t *wclist, char *word) {
   /* TODO */
   struct list_elem *e;
   //printf("word_count.c: find_word ");
-  pthread_mutex_lock(&wclist->lock); 
+  
   for (e = list_begin (&wclist->lst); e != list_end (&wclist->lst);
            e = list_next (e)) {
           word_count_t *wc = list_entry (e, word_count_t, elem);
@@ -59,16 +59,16 @@ word_count_t *find_word(word_count_list_t *wclist, char *word) {
           }
           
         }
-  pthread_mutex_unlock(&wclist->lock);
   return NULL;
 }
 
 word_count_t *add_word(word_count_list_t *wclist, char *word) {
   /* TODO */
   //printf("word_count.c: add_word \n ");
+  pthread_mutex_lock(&wclist->lock); 
   word_count_t *wc = find_word(wclist, word);
   //printf("word_count.c: add_word: after calling find_word \n");
-  pthread_mutex_lock(&wclist->lock); 
+  
   if (wc != NULL) {
     wc->count++;
     free(word); //??
