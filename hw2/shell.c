@@ -11,6 +11,8 @@
 #include <termios.h>
 #include <unistd.h>
 #include <limits.h>
+#include <dirent.h>
+
 
 #include "tokenizer.h"
 
@@ -122,6 +124,30 @@ void init_shell() {
   }
 }
 
+char* replace_char(char* str, char find, char replace){
+  char *current_pos = strchr(str,find);
+  while (current_pos){
+    *current_pos = replace;
+    current_pos = strchr(current_pos,find);
+  }
+  return str;
+}
+
+int isFileExists(const char *path)
+{
+    // Try to open file
+    FILE *fptr = fopen(path, "r");
+
+    // If file does not exists 
+    if (fptr == NULL) {
+        return 0;
+    }
+    // File exists hence close file and return true.
+    fclose(fptr);
+
+    return 1;
+}
+
 int main(unused int argc, unused char *argv[]) {
   init_shell();
 
@@ -156,7 +182,30 @@ int main(unused int argc, unused char *argv[]) {
           args[i] = arg;
         }
         args[size] = NULL;
-        execv(tokens_get_token(tokens, 0), args);
+        
+        char *first_arg = tokens_get_token(tokens, 0);
+        //printf("first_agr::: '%s'\n", first_arg);
+
+        char *path = getenv("PATH");
+        //printf("path::: '%s'\n", path);
+        char *ret = replace_char(path, ':', ' ');
+        //printf("ret::: '%s'\n", ret);
+        struct tokens *paths = tokenize(ret);
+        size_t path_len = tokens_get_length(paths);
+
+        for (int i = 0; i < path_len; i++) {
+          char *arg = tokens_get_token(paths, i);
+          char *add_slash = strcat (arg, "/");
+          char *res = strcat (add_slash, first_arg);
+          //printf("res::: '%s'\n", res);
+          if (isFileExists(res)) {
+            first_arg = res;
+            //printf("CHANGE:::'%s'\n", first_arg);
+            
+          } 
+        }
+        //printf("FINAL first_agr::: '%s'\n", first_arg);
+        execv(first_arg, args);
       }
 
 
