@@ -164,7 +164,7 @@ int main(unused int argc, unused char *argv[]) {
 
     /* Find which built-in function to run. */
     int fundex = lookup(tokens_get_token(tokens, 0));
-
+    FILE *fp = NULL;
     if (fundex >= 0) {
       cmd_table[fundex].fun(tokens);
     } else {
@@ -177,11 +177,36 @@ int main(unused int argc, unused char *argv[]) {
        else {
         char *args[2048]; //in stack
         size_t size = tokens_get_length(tokens);
-        for (int i = 0; i < size; i++) {
+        int i = 0;
+        for (; i < size; i++) {
           char *arg = tokens_get_token(tokens, i);
+          //printf("agr::: '%s'\n", arg);
+          if (*arg == '>') {
+             //printf("agr_print::: '%s'\n", arg);
+             char *next_token = tokens_get_token(tokens, i + 1);
+             if (next_token == NULL) {
+               perror("no file name provided");
+             } else {
+              char *file_name = next_token;
+              //printf("file_name::: '%s'\n", file_name);
+              fp = freopen(file_name ,"w", stdout);
+              break;
+             }
+          }
+          else if (*arg == '<') {
+            char *next_token = tokens_get_token(tokens, i + 1);
+            if (next_token == NULL) {
+               perror("no file name provided");
+             } else {
+               char *file_name = next_token;
+              //printf("file_name::: '%s'\n", file_name);
+              fp = freopen(file_name ,"r", stdin);
+              break;
+             }
+          }
           args[i] = arg;
         }
-        args[size] = NULL;
+        args[i + 1] = NULL;
         
         char *first_arg = tokens_get_token(tokens, 0);
         //printf("first_agr::: '%s'\n", first_arg);
@@ -204,8 +229,12 @@ int main(unused int argc, unused char *argv[]) {
             
           } 
         }
-        //printf("FINAL first_agr::: '%s'\n", first_arg);
+        
+        
         execv(first_arg, args);
+        fclose(fp);
+        
+
       }
 
 
