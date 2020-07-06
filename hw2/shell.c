@@ -214,7 +214,7 @@ int main(unused int argc, unused char *argv[]) {
         char *path = getenv("PATH");
         //printf("path::: '%s'\n", path);
         char *ret = replace_char(path, ':', ' ');
-        //printf("ret::: '%s'\n", ret);
+        
         struct tokens *paths = tokenize(ret);
         size_t path_len = tokens_get_length(paths);
 
@@ -230,8 +230,14 @@ int main(unused int argc, unused char *argv[]) {
           } 
         }
         
+        if (isFileExists(first_arg)) {
+           execv(first_arg, args);
+        }
+        else {
+          perror("no such path");
+        }
         
-        execv(first_arg, args);
+       
         fclose(fp);
         
 
