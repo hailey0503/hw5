@@ -174,7 +174,7 @@ int main(unused int argc, unused char *argv[]) {
       if (pid != 0) {
         wait(0);
       }
-       else {
+      else {
         char *args[2048]; //in stack
         size_t size = tokens_get_length(tokens);
         int i = 0;
@@ -239,7 +239,7 @@ int main(unused int argc, unused char *argv[]) {
         
        
         fclose(fp);
-        
+        exit(0);
 
       }
 
