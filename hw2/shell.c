@@ -31,6 +31,9 @@ struct termios shell_tmodes;
 /* Process group id for the shell */
 pid_t shell_pgid;
 
+void sig_int(int signo);
+void sig_quit(int signo);
+
 int cmd_exit(struct tokens *tokens);
 int cmd_help(struct tokens *tokens);
 int cmd_pwd(struct tokens *tokens);
@@ -148,15 +151,64 @@ int isFileExists(const char *path)
     return 1;
 }
 
+
 int main(unused int argc, unused char *argv[]) {
   init_shell();
 
   static char line[4096];
   int line_num = 0;
 
+  
+  struct sigaction sigign; //ignore
+  struct sigaction sigdfl; //default
+
+  sigign.sa_handler = SIG_IGN;  //handler
+  sigemptyset(&sigign.sa_mask); //make zero values in struct sigact
+  sigign.sa_flags = 0;
+
+  sigdfl.sa_handler = SIG_DFL;  //handler
+  sigemptyset(&sigdfl.sa_mask); //make zero values in struct sigact
+  sigdfl.sa_flags = 0;
+
   /* Please only print shell prompts when standard input is not a tty */
   if (shell_is_interactive)
     fprintf(stdout, "%d: ", line_num);
+  
+  if (sigaction(SIGINT, &sigign, 0) == -1) {
+    printf ("signal(SIGINT) error");
+          return -1;
+  }  
+
+  if (sigaction(SIGQUIT, &sigign, 0) == -1) {
+    printf ("signal(SIGQUIT) error");
+          return -1;
+  }  
+
+  if (sigaction(SIGTERM, &sigign, 0) == -1) {
+    printf ("signal(SIGTERM) error");
+          return -1;
+  } 
+
+  if (sigaction(SIGTSTP, &sigign, 0) == -1) {
+    printf ("signal(SIGTSTP) error");
+          return -1;
+  }  
+
+  if (sigaction(SIGCONT, &sigign, 0) == -1) {
+    printf ("signal(SIGCONT) error");
+          return -1;
+  } 
+
+  if (sigaction(SIGTTIN, &sigign, 0) == -1) {
+    printf ("signal(SIGTTIN) error");
+          return -1;
+  } 
+
+  if (sigaction(SIGTTOU, &sigign, 0) == -1) {
+    printf ("signal(SIGTTOU) error");
+          return -1;
+  } 
+
 
   while (fgets(line, 4096, stdin)) {
     /* Split our line into words. */
@@ -170,11 +222,58 @@ int main(unused int argc, unused char *argv[]) {
     } else {
       /* REPLACE this to run commands as programs. */
       //fprintf(stdout, "This shell doesn't know how to run programs.\n");
+
       pid_t pid = fork();
+      
+      
+      //printf("group_id::: '%d'\n", group_id);
+      //printf("set_group_id::: '%d'\n", set_pgid);
       if (pid != 0) {
+        //printf("parent_id::: '%d'\n", getpid());
+        
         wait(0);
       }
       else {
+        
+        setpgid(pid, pid);
+        int child_groupID = getpgrp();
+        printf("group_id::: '%d'\n", getpgrp());
+  
+        if (sigaction(SIGINT, &sigdfl, 0) == -1) {
+          printf ("signal(SIGINT) error");
+          return -1;
+        }  
+
+        if (sigaction(SIGQUIT, &sigdfl, 0) == -1) {
+          printf ("signal(SIGQUIT) error");
+          return -1;
+        }  
+
+        if (sigaction(SIGTERM, &sigdfl, 0) == -1) {
+          printf ("signal(SIGTERM) error");
+          return -1;
+        }  
+
+        if (sigaction(SIGTSTP, &sigdfl, 0) == -1) {
+          printf ("signal(SIGTSTP) error");
+          return -1;
+        }  
+
+        if (sigaction(SIGCONT, &sigdfl, 0) == -1) {
+          printf ("signal(SIGCONT) error");
+          return -1;
+        } 
+
+        if (sigaction(SIGTTIN, &sigdfl, 0) == -1) {
+          printf ("signal(SIGTTIN) error");
+          return -1;
+        } 
+
+        if (sigaction(SIGTTOU, &sigdfl, 0) == -1) {
+          printf ("signal(SIGTTOU) error");
+          return -1;
+        }  
+
         char *args[2048]; //in stack
         size_t size = tokens_get_length(tokens);
         int i = 0;
