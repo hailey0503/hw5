@@ -108,6 +108,7 @@ void init_shell() {
 
   /* Check if we are running interactively */
   shell_is_interactive = isatty(shell_terminal);
+  //shell_is_interactive = false;
 
   if (shell_is_interactive) {
     /* If the shell is not currently in the foreground, we must pause the shell until it becomes a
@@ -135,7 +136,7 @@ char* replace_char(char* str, char find, char replace){
   }
   return str;
 }
-
+/* 
 int isFileExists(const char *path)
 {
     // Try to open file
@@ -150,7 +151,7 @@ int isFileExists(const char *path)
 
     return 1;
 }
-
+*/
 
 int main(unused int argc, unused char *argv[]) {
   init_shell();
@@ -300,7 +301,7 @@ int main(unused int argc, unused char *argv[]) {
                perror("no file name provided");
              } else {
                char *file_name = next_token;
-              //printf("file_name::: '%s'\n", file_name);
+              //printf("file_name in::: '%s'\n", file_name);
               fp = freopen(file_name ,"r", stdin);
               break;
              }
@@ -313,7 +314,7 @@ int main(unused int argc, unused char *argv[]) {
         //printf("first_agr::: '%s'\n", first_arg);
 
         char *path = getenv("PATH");
-        //printf("path::: '%s'\n", path);
+        
         char *ret = replace_char(path, ':', ' ');
         
         struct tokens *paths = tokenize(ret);
@@ -323,11 +324,11 @@ int main(unused int argc, unused char *argv[]) {
           char *arg = tokens_get_token(paths, i);
           char *add_slash = strcat (arg, "/");
           char *res = strcat (add_slash, first_arg);
-          //printf("res::: '%s'\n", res);
+          
           if (access(res, X_OK) == 0) { // access([pathname], X_OK)--> if returns 0, ok else...
             first_arg = res;
             break;
-            //printf("CHANGE:::'%s'\n", first_arg);
+            
             
           } 
         }
@@ -335,9 +336,6 @@ int main(unused int argc, unused char *argv[]) {
         
         execv(first_arg, args);
         
-       
-        
-       
         fclose(fp);
         exit(0);
 
