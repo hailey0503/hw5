@@ -324,19 +324,18 @@ int main(unused int argc, unused char *argv[]) {
           char *add_slash = strcat (arg, "/");
           char *res = strcat (add_slash, first_arg);
           //printf("res::: '%s'\n", res);
-          if (isFileExists(res)) {
+          if (access(res, X_OK) == 0) { // access([pathname], X_OK)--> if returns 0, ok else...
             first_arg = res;
+            break;
             //printf("CHANGE:::'%s'\n", first_arg);
             
           } 
         }
         
-        if (isFileExists(first_arg)) {
-           execv(first_arg, args);
-        }
-        else {
-          perror("no such path");
-        }
+        
+        execv(first_arg, args);
+        
+       
         
        
         fclose(fp);
