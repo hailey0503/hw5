@@ -225,6 +225,7 @@ int main(unused int argc, unused char *argv[]) {
 
       pid_t pid = fork();
       
+
       
       //printf("group_id::: '%d'\n", group_id);
       //printf("set_group_id::: '%d'\n", set_pgid);
@@ -235,9 +236,10 @@ int main(unused int argc, unused char *argv[]) {
       }
       else {
         
-        setpgid(pid, pid);
+        //setpgid(pid, pid);
         int child_groupID = getpgrp();
-        printf("group_id::: '%d'\n", getpgrp());
+        tcsetpgrp(0, child_groupID);
+        //printf("group_id::: '%d'\n", getpgrp());
   
         if (sigaction(SIGINT, &sigdfl, 0) == -1) {
           printf ("signal(SIGINT) error");
