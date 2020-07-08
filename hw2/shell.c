@@ -107,8 +107,8 @@ void init_shell() {
   shell_terminal = STDIN_FILENO;
 
   /* Check if we are running interactively */
-  //shell_is_interactive = isatty(shell_terminal);
-  shell_is_interactive = false;
+  shell_is_interactive = isatty(shell_terminal);
+  
 
   if (shell_is_interactive) {
     /* If the shell is not currently in the foreground, we must pause the shell until it becomes a
