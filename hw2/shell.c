@@ -322,7 +322,10 @@ int main(unused int argc, unused char *argv[]) {
 
         for (int i = 0; i < path_len; i++) {
           char *arg = tokens_get_token(paths, i);
-          char *add_slash = strcat (arg, "/");
+          char *add_slash = malloc(sizeof(char) * (strlen(arg) + 1));
+          strcpy(add_slash, arg);
+          strcat (add_slash, "/");
+
           char *res = strcat (add_slash, first_arg);
           
           if (access(res, X_OK) == 0) { // access([pathname], X_OK)--> if returns 0, ok else...
