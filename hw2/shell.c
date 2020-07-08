@@ -320,11 +320,15 @@ int main(unused int argc, unused char *argv[]) {
         struct tokens *paths = tokenize(ret);
         size_t path_len = tokens_get_length(paths);
 
+        //char *add_slash;
         for (int i = 0; i < path_len; i++) {
           char *arg = tokens_get_token(paths, i);
-          char *add_slash = malloc(sizeof(char) * (strlen(arg) + 1));
-          strcpy(add_slash, arg);
-          strcat (add_slash, "/");
+          //add_slash = malloc(sizeof(char) * (strlen(arg) + 1));
+          //strcpy(add_slash, arg);
+          //strcat (add_slash, "/");
+
+          
+           char *add_slash = strcat (arg, "/");
 
           char *res = strcat (add_slash, first_arg);
           
@@ -339,6 +343,7 @@ int main(unused int argc, unused char *argv[]) {
         
         execv(first_arg, args);
         
+        //free(add_slash);
         fclose(fp);
         exit(0);
 
