@@ -49,15 +49,19 @@ void serve_file(int fd, char *path) {
   int file_d;
   file_d = open(path, O_RDONLY); 
   //printf("\nfile_d: %d\n", file_d);
-  char buf[4096];
+  char buf[2048];
   size_t nbytes;
   ssize_t length;
   nbytes = sizeof(buf);
   
-  length = read(file_d, buf, nbytes);
+  while ((length = read(file_d, buf, nbytes)) > 0) {
+    if (write(fd, buf, length) == -1) {
+          perror("ERROR");
+          exit(1);
+        }
+    } 
+  
   //printf("\nlength: %d\n", length);
-
-  write(fd, buf, length); 
   int j = snprintf(buf, 1024, "%ld", length);
   //printf("\nint j: %d\n", j);
   if (j <= 0) {
