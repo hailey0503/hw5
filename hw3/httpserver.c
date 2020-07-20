@@ -41,11 +41,38 @@ void serve_file(int fd, char *path) {
 
   /* TODO: PART 2 */
   /* PART 2 BEGIN */
+  //printf("\nstart:::::^^^^^^^)(()&($$%%)) \n");
+  int status_code = 200;
+  if (path == NULL) {
+    status_code = 404;
+  }
+  int file_d;
+  file_d = open(path, O_RDONLY); 
+  //printf("\nfile_d: %d\n", file_d);
+  char buf[4096];
+  size_t nbytes;
+  ssize_t length;
+  nbytes = sizeof(buf);
+  
+  length = read(file_d, buf, nbytes);
+  //printf("\nlength: %d\n", length);
 
-  http_start_response(fd, 200);
+  write(fd, buf, length); 
+  int j = snprintf(buf, 1024, "%ld", length);
+  //printf("\nint j: %d\n", j);
+  if (j <= 0) {
+    perror("no body length?");
+  }
+  buf[j] = '\0';
+  http_start_response(fd, status_code);
   http_send_header(fd, "Content-Type", http_get_mime_type(path));
-  http_send_header(fd, "Content-Length", "0"); // TODO: change this line too
+  http_send_header(fd, "Content-Length", buf); // TODO: change this line too
+
+ 
+
+
   http_end_headers(fd);
+  
 
 
   /* PART 2 END */
@@ -121,6 +148,10 @@ void handle_files_request(int fd) {
    */
 
   /* PART 2 & 3 BEGIN */
+  if (path == NULL) {
+    http_start_response(fd, 404);
+  }
+  serve_file(fd, path);
 
   /* PART 2 & 3 END */
 
