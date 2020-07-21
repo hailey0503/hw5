@@ -52,17 +52,20 @@ void serve_file(int fd, char *path) {
   char buf[2048];
   size_t nbytes;
   ssize_t length;
+  ssize_t tot_length = 0;
   nbytes = sizeof(buf);
   
   while ((length = read(file_d, buf, nbytes)) > 0) {
     if (write(fd, buf, length) == -1) {
-          perror("ERROR");
-          exit(1);
-        }
-    } 
+      perror("ERROR");
+      exit(1);
+    }
+    tot_length += length;
+    
+  } 
   
   //printf("\nlength: %d\n", length);
-  int j = snprintf(buf, 1024, "%ld", length);
+  int j = snprintf(buf, 1024, "%ld", tot_length);
   //printf("\nint j: %d\n", j);
   if (j <= 0) {
     perror("no body length?");
@@ -72,9 +75,6 @@ void serve_file(int fd, char *path) {
   http_send_header(fd, "Content-Type", http_get_mime_type(path));
   http_send_header(fd, "Content-Length", buf); // TODO: change this line too
 
- 
-
-
   http_end_headers(fd);
   
 
@@ -83,15 +83,44 @@ void serve_file(int fd, char *path) {
 }
 
 void serve_directory(int fd, char *path) {
-  http_start_response(fd, 200);
-  http_send_header(fd, "Content-Type", http_get_mime_type(".html"));
-  http_end_headers(fd);
+  
 
   /* TODO: PART 3 */
   /* PART 3 BEGIN */
-
   // TODO: Open the directory (Hint: opendir() may be useful here)
 
+  //http_format_href(char *buffer, char *path, char *filename)
+  DIR* directory = opendir(path);
+  char buf[4096];
+  struct dirent* dir_struct;
+  ssize_t tot_length = 0;
+  while ((dir_struct = readdir(directory)) != NULL) {
+    http_format_href(buf + tot_length, path, dir_struct->d_name);
+    int length = strlen("<a href=\"//\"></a><br/>") + strlen(path) + strlen(dir_struct->d_name)*2 + 1;
+    
+    tot_length += length;
+    
+  }
+  //buf length sizeof(buf)??
+  if ((write(fd, buf, tot_length)) == -1) {
+    perror("ERROR");
+    //exit(1); ///???
+  } 
+  
+  int j = snprintf(buf, 1024, "%ld", tot_length);
+  printf("\n int j: %d\n", j);
+  printf("\n totlen: %d\n",  tot_length);
+  if (j <= 0) {
+    perror("no body length?");
+  }
+  buf[j] = '\0';
+  http_start_response(fd, 200);
+  http_send_header(fd, "Content-Type", http_get_mime_type(".html"));
+  http_send_header(fd, "Content-Length", buf); 
+  
+  http_end_headers(fd);
+
+  
   /**
    * TODO: For each entry in the directory (Hint: look at the usage of readdir() ),
    * send a string containing a properly formatted HTML. (Hint: the http_format_href()
@@ -140,7 +169,7 @@ void handle_files_request(int fd) {
   path[0] = '.';
   path[1] = '/';
   memcpy(path + 2, request->path, strlen(request->path) + 1);
-
+  //printf("path: %s", path);
   /*
    * TODO: PART 2 is to serve files. If the file given by `path` exists,
    * call serve_file() on it. Else, serve a 404 Not Found error below.
@@ -155,7 +184,32 @@ void handle_files_request(int fd) {
   if (path == NULL) {
     http_start_response(fd, 404);
   }
-  serve_file(fd, path);
+  
+  struct stat stat_buf;
+  _Bool check_servefile = 0;
+  if(stat(path, &stat_buf) == -1) {
+    perror("stat");
+  }
+  //char path_buffer[1024];
+  if (S_ISDIR(stat_buf.st_mode)) {
+    DIR* directory = opendir(path);
+    char buf[1024];
+    struct dirent* dir_struct;
+    while ((dir_struct = readdir(directory)) != NULL) {
+      if (strcmp(dir_struct->d_name, "index.html") == 0) {
+        snprintf(buf, 1024, "%s%s", path, dir_struct->d_name); 
+        serve_file(fd, buf);
+        check_servefile = 1;
+        break;
+      } 
+    }
+    if (!check_servefile) {
+      serve_directory(fd, path);
+    }  
+  } else if (S_ISREG(stat_buf.st_mode)){
+    serve_file(fd, path);
+  } 
+ 
 
   /* PART 2 & 3 END */
 
