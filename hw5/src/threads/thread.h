@@ -101,6 +101,7 @@ struct thread
 
     struct file* open_file;             /* Single open file supported. */
     bool in_syscall;                    /* Stores if we are in a syscall. */
+    int stack_inc_count;
 #endif
 
     /* Owned by thread.c. */

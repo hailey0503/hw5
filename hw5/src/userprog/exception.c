@@ -6,12 +6,15 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/syscall.h"
+#include "threads/palloc.h"
+#include "userprog/pagedir.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
 
 static void kill (struct intr_frame *);
 static void page_fault (struct intr_frame *);
+static bool install_page (void *upage, void *kpage, bool writable);
 
 /* Registers handlers for interrupts that can be caused by user
    programs.
@@ -170,8 +173,38 @@ page_fault (struct intr_frame *f)
    * assume this; depending on the nature of the fault, the stack may need to
    * be grown.
    */
-  if (user)
-    syscall_exit (-1);
+
+   //start from PHYS_BASE - 20
+   //pg_round_down for upage
+   //validate check //kernal, not user, null? push sth can not be away from esp 32 
+  if (user) {
+   bool expand_success = false;
+
+    // check fault_addr is valid stack address to expand
+
+    if (true) {
+      //printf("stack_inc_count %d\n",t->stack_inc_count);
+      //printf("fault_addr %p\n", fault_addr);
+      //printf("up arg %p\n", ((uint8_t *) PHYS_BASE) - (PGSIZE * (t->stack_inc_count + 1)));
+      while((uint8_t *)fault_addr < ((uint8_t *) PHYS_BASE -20) - (PGSIZE * t->stack_inc_count + 1)) 
+      {
+        void* upage = pg_round_down(((uint8_t *) PHYS_BASE - 20) - (PGSIZE * (t->stack_inc_count + 1)));
+        //printf("upage %p\n", upage);
+        void* kpage = (void*)palloc_get_page(PAL_USER | PAL_ZERO);
+        bool writable = true;
+        bool success = pagedir_set_page(t->pagedir, upage, kpage, writable);
+        if (success) {
+           t->stack_inc_count++;
+          // printf("stack_inc_count %d\n",t->stack_inc_count);
+           expand_success = true;
+        }
+      }
+
+      if (expand_success) {
+         return;
+      }
+    }
+  }
 
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
