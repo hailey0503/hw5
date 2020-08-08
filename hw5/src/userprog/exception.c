@@ -179,10 +179,12 @@ page_fault (struct intr_frame *f)
    //validate check //kernal, not user, null? push sth can not be away from esp 32 
   if (user) {
    bool expand_success = false;
-      ///sanity check: pt bad addr---> terminate process syscall(-1) 
+     
     // check fault_addr is valid stack address to expand
 
-    if (is_user_vaddr(fault_addr) && (uint8_t *)fault_addr > (uint8_t *)f->esp -20) {
+    if (is_user_vaddr(fault_addr)) {
+       //printf("first if pass\n");
+       if ((uint8_t *)fault_addr > (uint8_t *)f->esp - 20) {
       //printf("stack_inc_count %d\n",t->stack_inc_count);
       //printf("fault_addr %p\n", fault_addr);
       //printf("up arg %p\n", ((uint8_t *) PHYS_BASE) - (PGSIZE * (t->stack_inc_count + 1)));
@@ -193,12 +195,13 @@ page_fault (struct intr_frame *f)
         void* kpage = (void*)palloc_get_page(PAL_USER | PAL_ZERO);
         bool writable = true;
         if (kpage == NULL) {
+           //printf("kpage is null\n");
            syscall_exit(-1);
-        } //if (kpage ==null ) {handle overflow}
-        bool success = pagedir_set_page(t->pagedir, upage, kpage, writable); //map sth to null if kpage==null
+        } //if (kpage ==null ) {handle overflow} --> map sth to null if kpage==null
+        bool success = pagedir_set_page(t->pagedir, upage, kpage, writable); 
         if (success) {
            t->stack_inc_count++;
-          // printf("stack_inc_count %d\n",t->stack_inc_count);
+            //printf("stack_inc_count %d\n",t->stack_inc_count);
            expand_success = true;
         }
       }
@@ -207,6 +210,31 @@ page_fault (struct intr_frame *f)
          return;
       }
     } else {
+       //printf("esp issue\n");
+       while((uint8_t *)fault_addr < ((uint8_t *) PHYS_BASE -20) - (PGSIZE * t->stack_inc_count + 1)) 
+      {
+        void* upage = pg_round_down(((uint8_t *) PHYS_BASE - 20) - (PGSIZE * (t->stack_inc_count + 1)));
+        //printf("upage %p\n", upage);
+        void* kpage = (void*)palloc_get_page(PAL_USER | PAL_ZERO);
+        bool writable = true;
+        if (kpage == NULL) {
+           //printf("kpage is null\n");
+           syscall_exit(-1);
+        } //if (kpage ==null ) {handle overflow} --> map sth to null if kpage==null
+        bool success = pagedir_set_page(t->pagedir, upage, kpage, writable); 
+        if (success) {
+           t->stack_inc_count++;
+            //printf("stack_inc_count %d\n",t->stack_inc_count);
+           expand_success = true;
+        }
+      }
+
+      if (expand_success) {
+         return;
+      }
+    }
+    }else {
+       printf("validation fail\n");
        syscall_exit(-1);
     }
   }
