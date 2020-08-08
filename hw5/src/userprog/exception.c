@@ -179,30 +179,35 @@ page_fault (struct intr_frame *f)
    //validate check //kernal, not user, null? push sth can not be away from esp 32 
   if (user) {
    bool expand_success = false;
-     
+
     // check fault_addr is valid stack address to expand
 
-    if (is_user_vaddr(fault_addr)) {
-       //printf("first if pass\n");
-       if ((uint8_t *)fault_addr > (uint8_t *)f->esp - 20) {
-      //printf("stack_inc_count %d\n",t->stack_inc_count);
-      //printf("fault_addr %p\n", fault_addr);
-      //printf("up arg %p\n", ((uint8_t *) PHYS_BASE) - (PGSIZE * (t->stack_inc_count + 1)));
-      while((uint8_t *)fault_addr < ((uint8_t *) PHYS_BASE -20) - (PGSIZE * t->stack_inc_count + 1)) 
+   //  if (is_user_vaddr(fault_addr) && (uint8_t *)fault_addr > (uint8_t *)f->esp - 20) 
+   if (is_user_vaddr(fault_addr) && 
+      (f->esp <= fault_addr || (uint8_t *)fault_addr == (uint8_t *)f->esp - 4 || (uint8_t *)fault_addr == (uint8_t *)f->esp - 32)) 
+   {
+      // printf("stack_inc_count %d\n",t->stack_inc_count);
+      // printf("fault_addr %p\n", fault_addr);
+      // printf("up arg %p\n", ((uint8_t *) PHYS_BASE) - (PGSIZE * (t->stack_inc_count + 1)));
+      while((uint8_t *)fault_addr < ((uint8_t *) PHYS_BASE ) - (PGSIZE * t->stack_inc_count + 1)) 
       {
-        void* upage = pg_round_down(((uint8_t *) PHYS_BASE - 20) - (PGSIZE * (t->stack_inc_count + 1)));
+        void* upage = pg_round_down(((uint8_t *) PHYS_BASE ) - (PGSIZE * (t->stack_inc_count + 1)));
         //printf("upage %p\n", upage);
         void* kpage = (void*)palloc_get_page(PAL_USER | PAL_ZERO);
         bool writable = true;
         if (kpage == NULL) {
-           //printf("kpage is null\n");
+         //   printf("kpage is null\n");
            syscall_exit(-1);
         } //if (kpage ==null ) {handle overflow} --> map sth to null if kpage==null
         bool success = pagedir_set_page(t->pagedir, upage, kpage, writable); 
         if (success) {
            t->stack_inc_count++;
-            //printf("stack_inc_count %d\n",t->stack_inc_count);
+          // printf("stack_inc_count %d\n",t->stack_inc_count);
            expand_success = true;
+        }
+        else {
+         //   printf("set page failed\n");
+           syscall_exit(-1);
         }
       }
 
@@ -210,32 +215,9 @@ page_fault (struct intr_frame *f)
          return;
       }
     } else {
-       //printf("esp issue\n");
-       while((uint8_t *)fault_addr < ((uint8_t *) PHYS_BASE -20) - (PGSIZE * t->stack_inc_count + 1)) 
-      {
-        void* upage = pg_round_down(((uint8_t *) PHYS_BASE - 20) - (PGSIZE * (t->stack_inc_count + 1)));
-        //printf("upage %p\n", upage);
-        void* kpage = (void*)palloc_get_page(PAL_USER | PAL_ZERO);
-        bool writable = true;
-        if (kpage == NULL) {
-           //printf("kpage is null\n");
-           syscall_exit(-1);
-        } //if (kpage ==null ) {handle overflow} --> map sth to null if kpage==null
-        bool success = pagedir_set_page(t->pagedir, upage, kpage, writable); 
-        if (success) {
-           t->stack_inc_count++;
-            //printf("stack_inc_count %d\n",t->stack_inc_count);
-           expand_success = true;
-        }
-      }
-
-      if (expand_success) {
-         return;
-      }
-    }
-    }else {
-       printf("validation fail\n");
+      //  printf("stack expand failed\n");
        syscall_exit(-1);
+      return;
     }
   }
 
@@ -249,3 +231,4 @@ page_fault (struct intr_frame *f)
           user ? "user" : "kernel");
   kill (f);
 }
+
