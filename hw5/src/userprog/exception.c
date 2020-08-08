@@ -179,10 +179,10 @@ page_fault (struct intr_frame *f)
    //validate check //kernal, not user, null? push sth can not be away from esp 32 
   if (user) {
    bool expand_success = false;
-
+      ///sanity check: pt bad addr---> terminate process syscall(-1) 
     // check fault_addr is valid stack address to expand
 
-    if (true) {
+    if (is_user_vaddr(fault_addr) && (uint8_t *)fault_addr > (uint8_t *)f->esp -20) {
       //printf("stack_inc_count %d\n",t->stack_inc_count);
       //printf("fault_addr %p\n", fault_addr);
       //printf("up arg %p\n", ((uint8_t *) PHYS_BASE) - (PGSIZE * (t->stack_inc_count + 1)));
@@ -192,7 +192,10 @@ page_fault (struct intr_frame *f)
         //printf("upage %p\n", upage);
         void* kpage = (void*)palloc_get_page(PAL_USER | PAL_ZERO);
         bool writable = true;
-        bool success = pagedir_set_page(t->pagedir, upage, kpage, writable);
+        if (kpage == NULL) {
+           syscall_exit(-1);
+        } //if (kpage ==null ) {handle overflow}
+        bool success = pagedir_set_page(t->pagedir, upage, kpage, writable); //map sth to null if kpage==null
         if (success) {
            t->stack_inc_count++;
           // printf("stack_inc_count %d\n",t->stack_inc_count);
@@ -203,6 +206,8 @@ page_fault (struct intr_frame *f)
       if (expand_success) {
          return;
       }
+    } else {
+       syscall_exit(-1);
     }
   }
 
