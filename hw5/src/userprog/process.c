@@ -220,6 +220,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
   bool success = false;
   int i;
 
+  //printf("begining of load 0: \n");
+ 
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL)
@@ -251,8 +253,10 @@ load (const char *file_name, void (**eip) (void), void **esp)
   file_ofs = ehdr.e_phoff;
   for (i = 0; i < ehdr.e_phnum; i++)
     {
+      
       struct Elf32_Phdr phdr;
-
+      
+      
       if (file_ofs < 0 || file_ofs > file_length (file))
         goto done;
       file_seek (file, file_ofs);
@@ -260,6 +264,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
       if (file_read (file, &phdr, sizeof phdr) != sizeof phdr)
         goto done;
       file_ofs += sizeof phdr;
+      //printf("phdr.p_type1 in for loop: %d\n",phdr.p_type);
+      //printf("file_ofs in for loop: %u\n",file_ofs);
       switch (phdr.p_type)
         {
         case PT_NULL:
@@ -274,8 +280,10 @@ load (const char *file_name, void (**eip) (void), void **esp)
         case PT_SHLIB:
           goto done;
         case PT_LOAD:
+          //printf("file_ofs in PT_LOAD: %d\n",file_ofs);
           if (validate_segment (&phdr, file))
             {
+             // printf("validate_se: \n");
               bool writable = (phdr.p_flags & PF_W) != 0;
               uint32_t file_page = phdr.p_offset & ~PGMASK;
               uint32_t mem_page = phdr.p_vaddr & ~PGMASK;
@@ -283,22 +291,38 @@ load (const char *file_name, void (**eip) (void), void **esp)
               uint32_t read_bytes, zero_bytes;
               if (phdr.p_filesz > 0)
                 {
+                  //printf("if (phdr.p_filesz > 0)\n");
                   /* Normal segment.
                      Read initial part from disk and zero the rest. */
                   read_bytes = page_offset + phdr.p_filesz;
                   zero_bytes = (ROUND_UP (page_offset + phdr.p_memsz, PGSIZE)
                                 - read_bytes);
+                  //printf("read_bytes0 : %d\n",read_bytes);
+                  //printf("zero_bytes0 : %d\n",zero_bytes);
                 }
               else
                 {
+                 //
+                  //printf("else (phdr.p_filesz > 0)\n");
                   /* Entirely zero.
                      Don't read anything from disk. */
+                  
                   read_bytes = 0;
                   zero_bytes = ROUND_UP (page_offset + phdr.p_memsz, PGSIZE);
+                  //printf("$$read_bytes else : %d\n",read_bytes);
+                  //printf("$$zero_bytes else : %d\n",zero_bytes);
+                  //printf("$$page_offset else : %d\n",page_offset);
+                  //printf("$$phdr.p_memsz else : %d\n",phdr.p_memsz);
                 }
+                  t->heap_start_address += ROUND_UP(read_bytes + zero_bytes + mem_page, PGSIZE);
+                  t->sbrk = t->heap_start_address;
               if (!load_segment (file, file_page, (void *) mem_page,
-                                 read_bytes, zero_bytes, writable))
-                goto done;
+                                 read_bytes, zero_bytes, writable)) 
+                {
+                  
+                  
+                  goto done;
+                }
             }
           else
             goto done;
@@ -424,6 +448,8 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       /* Advance. */
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
+      
+      
       upage += PGSIZE;
     }
   return true;
@@ -462,9 +488,10 @@ static bool
 install_page (void *upage, void *kpage, bool writable)
 {
   struct thread *t = thread_current ();
-
+  
   /* Verify that there's not already a page at that virtual
      address, then map our page there. */
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
 }
+
