@@ -126,15 +126,18 @@ syscall_sbrk(intptr_t increment, struct intr_frame *f)
             //printf("kpage is null\n");
             syscall_exit(-1);
         } 
-        //memset(kpage, 0, PGSIZE);
         bool success = pagedir_set_page(t->pagedir, upage, kpage, writable); 
 
         if (success) {
           
             count++;
-            //printf("prev:%p\n", pre_sbrk);
-            t->sbrk = t->sbrk + PGSIZE;
-            //printf("t->sbrk %p\n",t->sbrk);
+            //printf("prev: %p\n", pre_sbrk);
+            if (count * PGSIZE - increment > 0) {
+              //printf("count * PGS: %d\n", count * PGSIZE -  increment);
+              t->sbrk = t->sbrk + ( increment - (count - 1) * PGSIZE);
+            } else {
+              t->sbrk = t->sbrk + PGSIZE;
+            }
         }
         else {
             //printf("set page failed\n");
