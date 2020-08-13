@@ -101,7 +101,7 @@ syscall_close (int fd)
 }
 
 static void*
-syscall_sbrk(intptr_t increment) 
+syscall_sbrk(intptr_t increment, struct intr_frame *f) 
 {
   struct thread* t = thread_current ();
   if (increment == 0) {
@@ -111,33 +111,33 @@ syscall_sbrk(intptr_t increment)
   void *pre_sbrk = t->sbrk;
   //printf("t->sbrk first: %p\n",t->sbrk);
   //printf("heap first: %p\n",t->heap_start_address);
-  if (is_user_vaddr(t->sbrk) )
-  //&& (f->esp > t->sbrk))
+  if (is_user_vaddr(t->sbrk) && (f->esp > t->sbrk))
   {
     //printf("if: increment:%d\n", increment);
     while(count * PGSIZE < increment) {
       
         //printf("while: increment:%d\n", increment);
-        void* upage = pg_round_down((uint8_t *) t->sbrk + (PGSIZE * (count )));
+        void* upage = pg_round_down((uint8_t *) t->sbrk );
         //printf("upage %p\n", upage);
         void* kpage = (void*)palloc_get_page(PAL_USER | PAL_ZERO);
+
         bool writable = true;
         if (kpage == NULL) {
             //printf("kpage is null\n");
             syscall_exit(-1);
         } 
+        //memset(kpage, 0, PGSIZE);
         bool success = pagedir_set_page(t->pagedir, upage, kpage, writable); 
 
         if (success) {
           
             count++;
-            //printf("success: count:%d\n", count);
-            t->sbrk += PGSIZE;
-           //printf("t->sbrk %p\n",t->sbrk);
-          // expand_success = true;
+            //printf("prev:%p\n", pre_sbrk);
+            t->sbrk = t->sbrk + PGSIZE;
+            //printf("t->sbrk %p\n",t->sbrk);
         }
         else {
-             //printf("set page failed\n");
+            //printf("set page failed\n");
             syscall_exit(-1);
         }
     }
@@ -188,7 +188,7 @@ syscall_handler (struct intr_frame *f)
     case SYS_SBRK:
       validate_buffer_in_user_region (&args[1], sizeof(intptr_t));
 
-      f->eax = (uint32_t) syscall_sbrk((intptr_t) args[1]);
+      f->eax = (uint32_t) syscall_sbrk((intptr_t) args[1], f);
       break;
 
 
