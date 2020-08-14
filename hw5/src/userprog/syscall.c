@@ -103,74 +103,89 @@ syscall_close (int fd)
 static void*
 syscall_sbrk(intptr_t increment, struct intr_frame *f) 
 {
+  //printf("increment %d: ",increment);
   struct thread* t = thread_current ();
   if (increment == 0) {
     return t->sbrk;
   }
   
   int count = 0;
-  
+  void *kpage_start = NULL;
+  void *upage_start = NULL;
   void *pre_sbrk = t->sbrk;
+
   if (pagedir_get_page (t->pagedir, t->sbrk + increment) != NULL) {
+    if (increment < 0) {
+      int inc = increment * -1;
+      //printf("increment %d: ",inc);
+      while (count * PGSIZE < inc) {
+        
+        void* upage = pg_round_down((uint8_t *) t->sbrk - count * PGSIZE);
+        void* kpage = pagedir_get_page (t->pagedir, upage);
+        palloc_free_page(kpage);
+        pagedir_clear_page(t->pagedir, upage);
+        count += 1;
+        
+      }
+    } 
     t->sbrk += increment;
     return pre_sbrk;
   }
-  void *kpage_start = NULL;
-  void *upage_start = NULL;
+  
   
   if (is_user_vaddr(t->sbrk) && (f->esp > t->sbrk))
   {
-    
     while(count * PGSIZE < increment) {
-      
-        //printf("while: increment:%d\n", increment);
-        void* upage = pg_round_down((uint8_t *) t->sbrk + 1 );
-        if (upage_start == NULL) {
-          upage_start = upage;
-        }
-        //printf("upage %p\n", upage);
-        void* kpage = (void*)palloc_get_page(PAL_USER | PAL_ZERO);
-        //printf("kpage %p\n", kpage);
-        if (kpage_start == NULL) {
-          kpage_start = kpage;
-        }
-        bool writable = true;
         
-        if (kpage == NULL) {
-            
-            palloc_free_multiple(kpage_start, count);
-            for (int i = 0; i < count; i++) {
-              pagedir_clear_page(t->pagedir, upage_start + PGSIZE * i);
-            }
-            t->sbrk = pre_sbrk;
-            //printf("kpage is null 2: %p\n", t->sbrk);
-            return (void*) -1;
-        } 
-        //printf("upage11: %p\n", upage);
-        //printf("kpage11: %p\n", kpage);
-        bool success = pagedir_set_page(t->pagedir, upage, kpage, writable); 
-
-        if (success) {
+          //printf("while: increment:%d\n", increment);
+          void* upage = pg_round_down((uint8_t *) t->sbrk + 1 );
+          if (upage_start == NULL) {
+            upage_start = upage;
+          }
+          //printf("upage %p\n", upage);
+          void* kpage = (void*)palloc_get_page(PAL_USER | PAL_ZERO);
+          //printf("kpage %p\n", kpage);
+          if (kpage_start == NULL) {
+            kpage_start = kpage;
+          }
+          bool writable = true;
           
-            count++;
-            //printf("prev: %p\n", pre_sbrk);
-            if (count * PGSIZE - increment > 0) {
-              //printf("count * PGS: %d\n", count * PGSIZE -  increment);
-              t->sbrk = t->sbrk + ( increment - (count - 1) * PGSIZE);
-            } else {
-              t->sbrk = t->sbrk + PGSIZE;
-            }
-        }
-        else {
-            //printf("set page failed\n");
-            palloc_free_multiple(kpage_start, count);
-            syscall_exit(-1);
-        }
-    }
+          if (kpage == NULL) {
+              
+              palloc_free_multiple(kpage_start, count);
+              for (int i = 0; i < count; i++) {
+                pagedir_clear_page(t->pagedir, upage_start + PGSIZE * i);
+              }
+              t->sbrk = pre_sbrk;
+              //printf("kpage is null 2: %p\n", t->sbrk);
+              return (void*) -1;
+          } 
+          //printf("upage11: %p\n", upage);
+          //printf("kpage11: %p\n", kpage);
+          bool success = pagedir_set_page(t->pagedir, upage, kpage, writable); 
+
+          if (success) {
+            
+              count++;
+              //printf("prev: %p\n", pre_sbrk);
+              if (count * PGSIZE - increment > 0) {
+                //printf("count * PGS: %d\n", count * PGSIZE -  increment);
+                t->sbrk = t->sbrk + ( increment - (count - 1) * PGSIZE);
+              } else {
+                t->sbrk = t->sbrk + PGSIZE;
+              }
+          }
+          else {
+              //printf("set page failed\n");
+              palloc_free_multiple(kpage_start, count);
+              syscall_exit(-1);
+          }
+      }
+    
+   
+  
   }
   return pre_sbrk;
-
-  
 }
 
 static void
