@@ -111,37 +111,37 @@ syscall_sbrk(intptr_t increment, struct intr_frame *f)
   int count = 0;
   
   void *pre_sbrk = t->sbrk;
+  if (pagedir_get_page (t->pagedir, t->sbrk + increment) != NULL) {
+    t->sbrk += increment;
+    return pre_sbrk;
+  }
   void *kpage_start = NULL;
   void *upage_start = NULL;
-  //printf("t->sbrk first: %p\n",t->sbrk);
-  //printf("heap first: %p\n",t->heap_start_address);
-  //printf("increment: %d\n", increment);
+  
   if (is_user_vaddr(t->sbrk) && (f->esp > t->sbrk))
   {
-    //printf("if: increment:%d\n", increment);
+    
     while(count * PGSIZE < increment) {
       
         //printf("while: increment:%d\n", increment);
-        void* upage = pg_round_down((uint8_t *) t->sbrk );
+        void* upage = pg_round_down((uint8_t *) t->sbrk + 1 );
         if (upage_start == NULL) {
           upage_start = upage;
         }
         //printf("upage %p\n", upage);
         void* kpage = (void*)palloc_get_page(PAL_USER | PAL_ZERO);
+        //printf("kpage %p\n", kpage);
         if (kpage_start == NULL) {
           kpage_start = kpage;
         }
         bool writable = true;
         
         if (kpage == NULL) {
-            //printf("count: %d\n", count);
-            //printf("upage: %p\n", upage);
-            //printf("kpage is null 1: %p\n", t->sbrk);
+            
             palloc_free_multiple(kpage_start, count);
             for (int i = 0; i < count; i++) {
               pagedir_clear_page(t->pagedir, upage_start + PGSIZE * i);
             }
-            
             t->sbrk = pre_sbrk;
             //printf("kpage is null 2: %p\n", t->sbrk);
             return (void*) -1;
